@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# Clumsy, but workable
+base=`php -r "echo realpath('.');"`
+while [ ! -d $base/.git ]; do
+	base=`php -r "echo realpath('../$base');"`
+	if [ base=/ ]; then
+		break;
+	fi
+done
+
+gitconfig=$base/.git/config
+
+# gitsvn detection
+if [ "`grep '\[svn-remote' $gitconfig`" = "" ]; then
+	gitsvn=0
+else
+	gitsvn=1
+fi
+
+case "$1" in
+type)
+	if [ $gitsvn = 1 ]; then
+		echo "This is a git-svn project"
+	else
+		echo "This is a regular git project (not git-svn)"
+	fi
+
+	;;
+
+pull)
+	echo "> git stash"
+	git stash
+
+	if [ $gitsvn = 1 ]; then
+		echo "> git svn rebase"
+		git svn rebase
+		if [ $? != 0 ]; then
+			echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			exit 1
+		fi
+		exit $?
+
+	else
+		echo "> git pull --rebase"
+		git pull --rebase
+
+		if [ $? != 0 ]; then
+			echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			exit 1
+		fi
+	fi
+	
+	echo "> git stash pop"
+	git stash pop
+
+	;;
+	
+push)
+	echo "> git stash"
+	git stash
+
+	if [ $gitsvn = 1 ]; then
+		echo "git svn rebase"
+		git svn rebase
+		if [ $? != 0 ]; then
+			echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			exit 1
+		fi
+		git svn dcommit
+
+	else
+		echo "> git pull --rebase"
+		git pull --rebase
+
+		if [ $? != 0 ]; then
+			echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			exit 1
+		fi
+
+		echo "> git push --tags"
+		git push --tags
+	fi
+
+	echo "> git stash pop"
+	git stash pop
+
+	;;
+	
+resolved)
+	if [ "`git diff --cached`" = "" ]; then
+		echo "There are no changes staged.
+ - If you have forgotten to stage changes (with 'git add' or GitX)
+ - If you have staged all the changes, and it so happens that there aren't any, run '$0 skip' instead"
+		exit 1
+	fi
+	
+	echo "> git rebase --continue"
+	git rebase --continue
+	if [ $? != 0 ]; then
+		echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+		exit 1
+	fi
+
+	;;
+
+skip)
+	echo "> git rebase --skip"
+	git rebase --skip
+	if [ $? != 0 ]; then
+		echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+		exit 1
+	fi
+	
+	;;
+
+*)
+	echo "Usage:
+
+	$0 type: Print the type of repository
+	
+	$0 pull: Pull changes from the central repository
+	
+	$0 push: Push changes to the central repository
+	
+	$0 resolved: Call this after resolving conflicts and staging the changes
+
+	$0 skip: Call this to skip a conflicted changeset
+"
+
+	;;
+esac
