@@ -120,6 +120,49 @@ You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 	
 	;;
 
+# OK, THIS IS MORE ADVANCED THAN EASY
+
+stashtobranch)
+	if [ "$2" = "" ]; then
+		echo "Usage: $0 stashtobranch (branch) (message)"
+		exit 1
+	fi
+	
+	if [ "`git diff`" = "" -a "`git diff --cached`" = "" ]; then
+		echo "There's nothing to stash to a branch"
+		exit 2
+	fi
+
+	currentbranch=`git branch | grep "*" | awk "{ print \\\$2 }"`
+
+	echo "> git stash"
+	git stash
+	echo "> git checkout -b $2"
+	git checkout -b $2
+	if [ $? != 0 ]; then
+		echo "Couldn't create branch, cancelling"
+		echo "> git stash pop"
+		git stash pop
+		exit 1
+	fi
+	
+	echo "> git stash pop"
+	git stash pop
+	echo "> git add ."
+	git add .
+	if [ "$3" = "" ]; then
+		echo "> git commit"
+		echo "> git commit -m \"Stashed work to temporary branch\""
+		git commit -m "Stashed work to temporary branch"
+	else
+		echo "> git commit -m \"$3\""
+		git commit -m "$3"
+	fi
+	echo "> git checkout $currentbranch"
+	git checkout $currentbranch
+	
+	;;
+
 *)
 	echo "Usage:
 
