@@ -1,7 +1,7 @@
 Brat
 ====
 
-Brat is an opinionated simplification of a common git operations.  It's intended to ease the transition from something like subversion to git.  It prints the key git commands that it uses, to ease the transition from brat to regular git usage.
+Brat is an opinionated simplification of some common git operations.  It's intended to ease the transition from something like subversion to git.  It prints the key git commands that it uses, to ease the transition from brat to regular git usage.
 
 Rather than give a large set of options, it makes some choices about how to interact with git. This is because the flexibility of git can itself be a barrier for new users.
 
