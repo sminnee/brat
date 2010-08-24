@@ -29,8 +29,12 @@ type)
 	;;
 
 pull)
-	echo "> git stash"
-	git stash
+	didstash=0
+	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
+		echo "> git stash"
+		git stash
+		didstash=1
+	fi
 
 	if [ $gitsvn = 1 ]; then
 		echo "> git svn rebase"
@@ -40,7 +44,6 @@ pull)
 You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 			exit 1
 		fi
-		exit $?
 
 	else
 		echo "> git pull --rebase"
@@ -52,15 +55,21 @@ You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 			exit 1
 		fi
 	fi
-	
-	echo "> git stash pop"
-	git stash pop
+
+	if [ $didstash = 1 ]; then
+		echo "> git stash pop"
+		git stash pop
+	fi
 
 	;;
 	
 push)
-	echo "> git stash"
-	git stash
+	didstash=0
+	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
+		echo "> git stash"
+		git stash
+		didstash=1
+	fi
 
 	if [ $gitsvn = 1 ]; then
 		echo "git svn rebase"
@@ -86,8 +95,10 @@ You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 		git push --tags
 	fi
 
-	echo "> git stash pop"
-	git stash pop
+	if [ $didstash = 1 ]; then
+		echo "> git stash pop"
+		git stash pop
+	fi
 
 	;;
 	
