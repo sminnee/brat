@@ -55,5 +55,4 @@ Stash the currently uncommitted changes into a new branch, and the check out the
 Known issues
 ------------
 
- * If you don't stash anything, then git stash pop will pull off some legacy stash
  * Conflict resolution isn't yet tested
