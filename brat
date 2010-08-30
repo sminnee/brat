@@ -167,40 +167,24 @@ stashtobranch)
 
 	currentbranch=`git branch | grep "*" | awk "{ print \\\$2 }"`
 
-	yellow "> git stash"
-	git stash
-	echo
-	yellow "> git checkout -b $2"
-	git checkout -b $2
+	instructed_call "git stash"
+	instructed_call "git checkout -b $2"
 	if [ $? != 0 ]; then
-		echo "Couldn't create branch, cancelling"
-		echo "> git stash pop"
-		git stash pop
-		echo
+		red "Couldn't create branch, cancelling"
+		instructed_call "> git stash pop"
 		exit 1
 	fi
-	echo
 	
-	yellow "> git stash pop"
-	git stash pop
-	echo
+	instructed_call "git stash pop"
 
-	yellow "> git add ."
-	git add .
-	echo
+	instructed_call "git add ."
+
 	if [ "$3" = "" ]; then
-		echo "> git commit"
-		echo "> git commit -m \"Stashed work to temporary branch\""
-		git commit -m "Stashed work to temporary branch"
-		echo
+		instructed_call "git commit -m \"Stashed work to temporary branch\""
 	else
-		echo "> git commit -m \"$3\""
-		git commit -m "$3"
-		echo
+		instructed_call "git commit -m \"$3\""
 	fi
-	yellow "> git checkout $currentbranch"
-	git checkout $currentbranch
-	echo
+	instructed_call "git checkout $currentbranch"
 	
 	;;
 
