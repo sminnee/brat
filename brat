@@ -18,11 +18,16 @@ else
 	gitsvn=1
 fi
 
-function instruction {
+# Formatted output functions
+function instructed_call {
 	local cmd=$1
 	local text=$2
 	blue "$text"
 	yellow "> $cmd"
+	$cmd
+	local return=$?
+	echo
+	return $return
 }
 function blue {
 	echo -e "\033[1;34m${1}\033[0;37m"
@@ -34,6 +39,77 @@ function red {
 	echo -e "\033[1;31m${1}\033[0;37m"
 }
 
+
+# Pull command
+function pull {
+	stash && pull_nostash && unstash
+}
+
+
+# Push command
+# Uses global $gitsvn
+function push {
+	stash && pull_nostash && push_nostash && unstash
+}
+
+# Inner pull logic used by both pull & push
+# Uses global $gitsvn
+function pull_nostash {
+	if [ $gitsvn = 1 ]; then
+		instructed_call "git svn rebase" "We 'pull' changes in from the central repository.  There's a special command for pulling from subversion repositories."
+		if [ $? != 0 ]; then
+			echo "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
+			return 1
+		fi
+
+	else
+		instructed_call "git pull --rebase" "Then we 'pull' changes in from the central repository.  The --rebase option keeps our history flatter when you see it in GitX."
+		if [ $? != 0 ]; then
+			blue "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
+			return 1
+		fi
+		instructed_call "git fetch --tags" "Fetching any new tags from the central repository"
+	fi
+	return 0
+}
+ 
+# inner code for push
+# Uses global $gitsvn
+function push_nostash() {
+	if [ $gitsvn = 1 ]; then
+		instructed_call "git svn dcommit" "We push to the central server."
+
+	else
+		instructed_call "git push" "We push to the central server, then we call push with --tags to push any tags.  We do these commands separately, otherwise it won't push unless there are new tags to send."
+
+		instructed_call "git push --tags"
+	fi
+	return 0
+}
+
+# Stash changes if necessary
+# uses global $didstash
+function stash {
+	didstash=0
+	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
+		instructed_call "git stash" "First we 'stash' your uncommitted changes so that the don't conflict with the new code being pulled in."
+		didstash=1
+	fi
+	return 0
+}
+
+# Unstash changes if necessary
+# uses global $didstash
+function unstash {
+	if [ $didstash = 1 ]; then
+		instructed_call "git stash pop" "Finally we 'pop' the previously stashed changes, to return your work in progress as uncommitted code."
+	fi
+	return 0
+}
+
+
 case "$1" in
 type)
 	if [ $gitsvn = 1 ]; then
@@ -41,99 +117,14 @@ type)
 	else
 		echo "This is a regular git project (not git-svn)"
 	fi
-
 	;;
 
 pull)
-	didstash=0
-	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
-		instruction "git stash" "First we 'stash' your uncommitted changes so that the don't conflict with the new code being pulled in."
-		git stash
-		echo
-		didstash=1
-	fi
-
-	if [ $gitsvn = 1 ]; then
-		instruction "git svn rebase" "We 'pull' changes in from the central repository.  There's a special command for pulling from subversion repositories."
-		git svn rebase
-		echo
-		if [ $? != 0 ]; then
-			echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
-			exit 1
-		fi
-
-	else
-		instruction "git pull --rebase" "Then we 'pull' changes in from the central repository.  The --rebase option keeps our history flatter when you see it in GitX."
-		git pull --rebase
-		if [ $? != 0 ]; then
-			blue "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
-			exit 1
-		fi
-		echo
-		instruction "git fetch --tags" "Fetching any new tags from the central repository"
-		git fetch --tags
-		echo
-	fi
-
-	if [ $didstash = 1 ]; then
-		instruction "git stash pop" "Finally we 'pop' the previously stashed changes, to return your work in progress as uncommitted code."
-		git stash pop
-		echo
-	fi
-
+	pull
 	;;
 	
 push)
-	didstash=0
-	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
-		instruction "git stash" "First we 'stash' your uncommitted changes so that the don't conflict with the new code being pulled in."
-		git stash
-		echo
-		didstash=1
-	fi
-
-	if [ $gitsvn = 1 ]; then
-	 	instruction "git svn rebase" "Then we 'pull' changes in from the central repository.  You always have to pull before you push; otherwise the central server wouldn't know how to resolve any conflicts."
-		git svn rebase
-		if [ $? != 0 ]; then
-			red "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
-			exit 1
-		fi
-		echo
-
-		instruction "git svn dcommit" "Now we can push to the central server."
-		git svn dcommit
-		echo
-
-	else
-		instruction "git pull --rebase --tags" "Then we 'pull' changes in from the central repository.  The --rebase option keeps our history flatter when you see it in GitX, and the --tags option ensure that we pull any new tags from the central repository."
-		git pull --rebase --tags
-
-		if [ $? != 0 ]; then
-			red "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
-			exit 1
-		fi
-		echo
-
-		instruction "git push" "We push to the central server, then we call push with --tags to push any tags.  We do these commands separately, otherwise it won't push unless there are new tags to send."
-		git push
-		echo
-
-		yellow "> git push --tags"
-		git push --tags
-		echo
-	fi
-
-	if [ $didstash = 1 ]; then
-		instruction "git stash pop" "Finally we 'pop' the previously stashed changes, to return your work in progress as uncommitted code."
-		git stash pop
-		echo
-	fi
-
+	push
 	;;
 	
 resolved)
@@ -144,24 +135,20 @@ resolved)
 		exit 1
 	fi
 	
-	insturction "git rebase --continue" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --continue"
-	git rebase --continue
+	instructed_call "git rebase --continue" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --continue"
 	if [ $? != 0 ]; then
 		red "Something went wrong!"
 		exit 1
 	fi
-	echo
 
 	;;
 
 skip)
-	instruction "git rebase --skip" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --skip"
-	git rebase --skip
+	instructed_call "git rebase --skip" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --skip"
 	if [ $? != 0 ]; then
 		red "Something went wrong!"
 		exit 1
 	fi
-	echo
 	
 	;;
 
