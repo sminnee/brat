@@ -3,8 +3,8 @@
 # Clumsy, but workable
 base=`php -r "echo realpath('.');"`
 while [ ! -d $base/.git ]; do
-	base=`php -r "echo realpath('../$base');"`
-	if [ base=/ ]; then
+	base=`php -r "echo realpath('$base/..');"`
+	if [ base = / ]; then
 		break;
 	fi
 done
