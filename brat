@@ -18,6 +18,22 @@ else
 	gitsvn=1
 fi
 
+function instruction {
+	local cmd=$1
+	local text=$2
+	blue "$text"
+	yellow "> $cmd"
+}
+function blue {
+	echo -e "\033[1;34m${1}\033[0;37m"
+}
+function yellow {
+	echo -e "\033[1;33m${1}\033[0;37m"
+}
+function red {
+	echo -e "\033[1;31m${1}\033[0;37m"
+}
+
 case "$1" in
 type)
 	if [ $gitsvn = 1 ]; then
@@ -31,34 +47,40 @@ type)
 pull)
 	didstash=0
 	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
-		echo "> git stash"
+		instruction "git stash" "First we 'stash' your uncommitted changes so that the don't conflict with the new code being pulled in."
 		git stash
+		echo
 		didstash=1
 	fi
 
 	if [ $gitsvn = 1 ]; then
-		echo "> git svn rebase"
+		instruction "git svn rebase" "We 'pull' changes in from the central repository.  There's a special command for pulling from subversion repositories."
 		git svn rebase
+		echo
 		if [ $? != 0 ]; then
 			echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
 			exit 1
 		fi
 
 	else
-		echo "> git pull --rebase"
+		instruction "git pull --rebase" "Then we 'pull' changes in from the central repository.  The --rebase option keeps our history flatter when you see it in GitX."
 		git pull --rebase
-
 		if [ $? != 0 ]; then
-			echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			blue "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
 			exit 1
 		fi
+		echo
+		instruction "git fetch --tags" "Fetching any new tags from the central repository"
+		git fetch --tags
+		echo
 	fi
 
 	if [ $didstash = 1 ]; then
-		echo "> git stash pop"
+		instruction "git stash pop" "Finally we 'pop' the previously stashed changes, to return your work in progress as uncommitted code."
 		git stash pop
+		echo
 	fi
 
 	;;
@@ -66,68 +88,80 @@ You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 push)
 	didstash=0
 	if [ "`git diff`" != "" -o "`git diff --cached`" != "" ]; then
-		echo "> git stash"
+		instruction "git stash" "First we 'stash' your uncommitted changes so that the don't conflict with the new code being pulled in."
 		git stash
+		echo
 		didstash=1
 	fi
 
 	if [ $gitsvn = 1 ]; then
-		echo "git svn rebase"
+	 	instruction "git svn rebase" "Then we 'pull' changes in from the central repository.  You always have to pull before you push; otherwise the central server wouldn't know how to resolve any conflicts."
 		git svn rebase
 		if [ $? != 0 ]; then
-			echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			red "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
 			exit 1
 		fi
+		echo
+
+		instruction "git svn dcommit" "Now we can push to the central server."
 		git svn dcommit
+		echo
 
 	else
-		echo "> git pull --rebase"
-		git pull --rebase
+		instruction "git pull --rebase --tags" "Then we 'pull' changes in from the central repository.  The --rebase option keeps our history flatter when you see it in GitX, and the --tags option ensure that we pull any new tags from the central repository."
+		git pull --rebase --tags
 
 		if [ $? != 0 ]; then
-			echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+			red "It looks like there was a conflict when rebasing against the upstream changes.
+You will need to resolve this commit and then run 'brat resolved' or 'brat skip'"
 			exit 1
 		fi
+		echo
 
-		echo "> git push --tags"
+		instruction "git push" "We push to the central server, then we call push with --tags to push any tags.  We do these commands separately, otherwise it won't push unless there are new tags to send."
+		git push
+		echo
+
+		yellow "> git push --tags"
 		git push --tags
+		echo
 	fi
 
 	if [ $didstash = 1 ]; then
-		echo "> git stash pop"
+		instruction "git stash pop" "Finally we 'pop' the previously stashed changes, to return your work in progress as uncommitted code."
 		git stash pop
+		echo
 	fi
 
 	;;
 	
 resolved)
 	if [ "`git diff --cached`" = "" ]; then
-		echo "There are no changes staged.
+		blue "There are no changes staged.
  - If you have forgotten to stage changes (with 'git add' or GitX)
- - If you have staged all the changes, and it so happens that there aren't any, run '$0 skip' instead"
+ - If you have staged all the changes, and it so happens that there aren't any, run 'brat skip' instead"
 		exit 1
 	fi
 	
-	echo "> git rebase --continue"
+	insturction "git rebase --continue" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --continue"
 	git rebase --continue
 	if [ $? != 0 ]; then
-		echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+		red "Something went wrong!"
 		exit 1
 	fi
+	echo
 
 	;;
 
 skip)
-	echo "> git rebase --skip"
+	instruction "git rebase --skip" "Because we always pull changes using the '--rebase' option, conflict resolution is done with arguments to the git rebase command.  In this case, --skip"
 	git rebase --skip
 	if [ $? != 0 ]; then
-		echo "It looks like there was a conflict when rebasing against the upstream changes.
-You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
+		red "Something went wrong!"
 		exit 1
 	fi
+	echo
 	
 	;;
 
@@ -135,47 +169,56 @@ You will need to resolve this commit and then run '$0 resolved' or '$0 skip'"
 
 stashtobranch)
 	if [ "$2" = "" ]; then
-		echo "Usage: $0 stashtobranch (branch) (message)"
+		blue "Usage: $0 stashtobranch (branch) (message)"
 		exit 1
 	fi
 	
 	if [ "`git diff`" = "" -a "`git diff --cached`" = "" ]; then
-		echo "There's nothing to stash to a branch"
+		red "There's nothing to stash to a branch"
 		exit 2
 	fi
 
 	currentbranch=`git branch | grep "*" | awk "{ print \\\$2 }"`
 
-	echo "> git stash"
+	yellow "> git stash"
 	git stash
-	echo "> git checkout -b $2"
+	echo
+	yellow "> git checkout -b $2"
 	git checkout -b $2
 	if [ $? != 0 ]; then
 		echo "Couldn't create branch, cancelling"
 		echo "> git stash pop"
 		git stash pop
+		echo
 		exit 1
 	fi
+	echo
 	
-	echo "> git stash pop"
+	yellow "> git stash pop"
 	git stash pop
-	echo "> git add ."
+	echo
+
+	yellow "> git add ."
 	git add .
+	echo
 	if [ "$3" = "" ]; then
 		echo "> git commit"
 		echo "> git commit -m \"Stashed work to temporary branch\""
 		git commit -m "Stashed work to temporary branch"
+		echo
 	else
 		echo "> git commit -m \"$3\""
 		git commit -m "$3"
+		echo
 	fi
-	echo "> git checkout $currentbranch"
+	yellow "> git checkout $currentbranch"
 	git checkout $currentbranch
+	echo
 	
 	;;
 
 *)
-	echo "Usage:
+	blue "Usage:
 
 	$0 type: Print the type of repository
 	

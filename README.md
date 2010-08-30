@@ -5,6 +5,8 @@ Brat is an opinionated simplification of some common git operations.  It's inten
 
 Rather than give a large set of options, it makes some choices about how to interact with git. This is because the flexibility of git can itself be a barrier for new users.
 
+You shouldn't think of brat as a replacement for git - it's not designed to replace git in its entirety.  Rather, it's a set of training wheels for some of the more common actions that new users to git will have to learn.  To help with this, it prints out the git commands that it's executing as well as an explanation of why it's doing this.
+
 Key points:
 
  * It works with git-svn and regular repositories
@@ -51,6 +53,13 @@ Synchronise your local repository with the central one.  This calls `brat pull` 
 ### `brat stashtobranch branchname "commit message"`
 
 Stash the currently uncommitted changes into a new branch, and the check out the branch you were originally on.  This can be thought of as a slightly more permanent alternative to `git stash`.
+
+### `brat resolved` and `brat skip`
+
+These commands are used during conflict resolution.
+
+ * To resolve a conflict, you should stage all the changes for the resolved commit and then run `brat resolved`.  To stage changes, you should move them to the right hand column of the GitX commit screen.
+ * To skip a commit that is no longer relevant (for example, the same change was already made in a different way in the central repository), call `brat skip`.  Remember that this means you will lose your changes, so be careful!
 
 Known issues
 ------------
