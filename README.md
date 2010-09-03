@@ -19,7 +19,6 @@ Installation
 You install brat manually, although the process is simple.  Just download the package from git and copy the binary into your path:
 
     git clone git://github.com/sminnee/brat.git
-    cd brat
     sudo cp brat/brat /usr/bin
     rm -rf brat
     
@@ -46,7 +45,7 @@ Print the type of the current repository: git-svn or regular git.
 
 Pull changes from the central repository into your local one.  Any changes you have made on your local repository will be rebased onto the latest code from the central repository.
 
-### `brat push`
+### `brat push` or `brat sync`
 
 Synchronise your local repository with the central one.  This calls `brat pull` first.
 

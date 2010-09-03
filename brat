@@ -126,6 +126,10 @@ pull)
 push)
 	push
 	;;
+
+sync)
+	push
+	;;
 	
 resolved)
 	if [ "`git diff --cached`" = "" ]; then
@@ -191,15 +195,15 @@ stashtobranch)
 *)
 	blue "Usage:
 
-	$0 type: Print the type of repository
+brat type: Print the type of repository
 	
-	$0 pull: Pull changes from the central repository
+brat pull: Pull changes from the central repository
 	
-	$0 push: Push changes to the central repository
+brat push or brat sync: Push changes to the central repository
 	
-	$0 resolved: Call this after resolving conflicts and staging the changes
+brat resolved: Call this after resolving conflicts and staging the changes
 
-	$0 skip: Call this to skip a conflicted changeset
+brat skip: Call this to skip a conflicted changeset
 "
 
 	;;
